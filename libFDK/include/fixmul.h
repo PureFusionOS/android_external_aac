@@ -104,6 +104,9 @@ amm-info@iis.fraunhofer.de
 #elif defined(__x86__)	/* cppp replaced: elif */
 #include "x86/fixmul_x86.h"
 
+#elif defined(__aarch64__) || defined(__AARCH64EL__)
+#include "aarch64/fixmul_aarch64.h"
+
 #endif /* all cores */
 
 /*************************************************************************

@@ -108,7 +108,6 @@ amm-info@iis.fraunhofer.de
 #endif
 
 
-
 /* Define __ARM_ARCH_5TE__ if armv5te features are supported  */
 #if (__TARGET_ARCH_ARM == 5) || defined(__TARGET_FEATURE_DSPMUL) || (_M_ARM == 5) || defined(__ARM_ARCH_5TEJ__) || defined(__TI_TMS470_V5__) || defined(__ARM_ARCH_7EM__)
 #define __ARM_ARCH_5TE__
@@ -200,6 +199,14 @@ amm-info@iis.fraunhofer.de
 #define WINDOWTABLE_16BIT
 #define POW2COEFF_16BIT
 #define LDCOEFF_16BIT
+
+#elif defined(__aarch64__) || defined(__AARCH64EL__)
+#define ARCH_PREFER_MULT_32x32
+#define ARCH_PREFER_MULT_32x16
+#define SINETABLE_16BIT
+#define POW2COEFF_16BIT
+#define LDCOEFF_16BIT
+#define WINDOWTABLE_16BIT
 
 #else
 

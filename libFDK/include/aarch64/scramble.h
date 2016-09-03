@@ -83,113 +83,49 @@ amm-info@iis.fraunhofer.de
 
 /***************************  Fraunhofer IIS FDK Tools  **********************
 
-   Author(s):   Marc Gayer
-   Description: fixed point intrinsics
+   Author(s):
+   Description: bitreversal of input data
 
 ******************************************************************************/
 
-#if !defined(__CLZ_H__)
-#define __CLZ_H__
+#if defined(FUNCTION_scramble)
+#if defined(__GNUC__)	/* cppp replaced: elif */
 
-#include "FDK_archdef.h"
-#include "machine_type.h"
+#define FUNCTION_scramble
 
-#if defined(__arm__)
-#include "arm/clz_arm.h"
+inline void scramble(FIXP_DBL x [], INT n) {
+  FDK_ASSERT(!(((INT)x)&(ALIGNMENT_DEFAULT-1)));
+  asm("mov     r2, #1;\n"               /* r2(m) = 1;           */
+      "sub     r3, %1, #1;\n"           /* r3 = n-1;            */
+      "mov     r4, #0;\n"               /* r4(j) = 0;           */
 
-#elif defined(__mips__)	/* cppp replaced: elif */
-#include "mips/clz_mips.h"
+"scramble_m_loop%=:\n"                  /* {                    */
+      "mov     r5, %1;\n"               /*  r5(k) = 1;          */
 
-#elif defined(__x86__)	/* cppp replaced: elif */
-#include "x86/clz_x86.h"
+"scramble_k_loop%=:\n"                  /*  {                   */
+      "mov     r5, r5, lsr #1;\n"       /*   k >>= 1;           */
+      "eor     r4, r4, r5;\n"           /*   j ^=k;             */
+      "ands    r10, r4, r5;\n"           /*   r10 = r4 & r5;      */
+      "beq     scramble_k_loop%=;\n"      /*  } while (r10 == 0);  */
 
-#elif defined(__aarch64__) || defined(__AARCH64EL__)
-#include "aarch64/clz_aarch64.h"
+      "cmp     r4, r2;\n"               /*   if (r4 < r2) break;        */
+      "bcc     scramble_m_loop_end%=;\n"
 
-#endif /* all cores */
+      "mov     r5, r2, lsl #3;\n"       /* m(r5) = r2*4*2               */
+      "ldrd    r10, [%0, r5];\n"         /* r10 = x[r5], x7 = x[r5+1]     */
+      "mov     r6, r4, lsl #3;\n"      /* j(r6) = r4*4*2              */
+      "ldrd    r8, [%0, r6];\n"        /* r8 = x[r6], r9 = x[r6+1];  */
+      "strd    r10, [%0, r6];\n"        /* x[r6,r6+1] = r10,r11;        */
+      "strd    r8, [%0, r5];\n"         /* x[r5,r5+1] = r8,r9;          */
 
+"scramble_m_loop_end%=:\n"
+      "add     r2, r2, #1;\n"           /* r2++;                        */
+      "cmp     r2, r3;\n"
+      "bcc     scramble_m_loop%=;\n"      /* } while (r2(m) < r3(n-1));   */
+       :
+       : "r"(x), "r"(n)
+       : "r2","r3", "r4","r5", "r10","r11", "r8","r9", "r6" );
 
-/*************************************************************************
- *************************************************************************
-    Software fallbacks for missing functions.
-**************************************************************************
-**************************************************************************/
-
-#if !defined(FUNCTION_fixnormz_S)
-#ifdef FUNCTION_fixnormz_D
-inline INT fixnormz_S (SHORT a)
-{
-  return fixnormz_D((INT)(a));
 }
-#else
-inline INT fixnormz_S (SHORT a)
-{
-    int leadingBits = 0;
-    a = ~a;
-    while(a & 0x8000) {
-      leadingBits++;
-      a <<= 1;
-    }
-
-    return (leadingBits);
-}
-#endif
-#endif
-
-#if !defined(FUNCTION_fixnormz_D)
-inline INT fixnormz_D (LONG a)
-{
-    INT leadingBits = 0;
-    a = ~a;
-    while(a & 0x80000000) {
-      leadingBits++;
-      a <<= 1;
-    }
-
-    return (leadingBits);
-}
-#endif
-
-
-/*****************************************************************************
-
-    functionname: fixnorm_D
-    description:  Count leading ones or zeros of operand val for dfract/LONG INT values.
-                  Return this value minus 1. Return 0 if operand==0.
-*****************************************************************************/
-#if !defined(FUNCTION_fixnorm_S)
-#ifdef FUNCTION_fixnorm_D
-inline INT fixnorm_S(FIXP_SGL val)
-{
-  return fixnorm_D((INT)(val));
-}
-#else
-inline INT fixnorm_S(FIXP_SGL val)
-{
-    INT leadingBits = 0;
-    if ( val != (FIXP_SGL)0 ) {
-        if ( val < (FIXP_SGL)0 ) {
-            val = ~val;
-        }
-        leadingBits = fixnormz_S(val) - 1;
-    }
-    return (leadingBits);
-}
-#endif
-#endif
-
-#if !defined(FUNCTION_fixnorm_D)
-inline INT fixnorm_D(FIXP_DBL val)
-{
-    INT leadingBits = 0;
-    if ( val != (FIXP_DBL)0 ) {
-        if ( val < (FIXP_DBL)0 ) {
-            val = ~val;
-        }
-        leadingBits = fixnormz_D(val) - 1;
-    }
-    return (leadingBits);
-}
-#endif
-
-#endif /* __CLZ_H__ */
+    #endif	/* __GNUC__ */
+#endif	/* defined(FUNCTION_scramble) */

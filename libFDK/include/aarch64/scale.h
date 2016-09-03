@@ -81,115 +81,68 @@ www.iis.fraunhofer.de/amm
 amm-info@iis.fraunhofer.de
 ----------------------------------------------------------------------------------------------------------- */
 
-/***************************  Fraunhofer IIS FDK Tools  **********************
+/********************************  Fraunhofer IIS  ***************************
 
-   Author(s):   Marc Gayer
-   Description: fixed point intrinsics
+   Author(s):
+   Description: ARM scaling operations
 
 ******************************************************************************/
 
-#if !defined(__CLZ_H__)
-#define __CLZ_H__
+#if defined(__GNUC__) /* GCC Compiler */	/* cppp replaced: elif */
 
-#include "FDK_archdef.h"
-#include "machine_type.h"
-
-#if defined(__arm__)
-#include "arm/clz_arm.h"
-
-#elif defined(__mips__)	/* cppp replaced: elif */
-#include "mips/clz_mips.h"
-
-#elif defined(__x86__)	/* cppp replaced: elif */
-#include "x86/clz_x86.h"
-
-#elif defined(__aarch64__) || defined(__AARCH64EL__)
-#include "aarch64/clz_aarch64.h"
-
-#endif /* all cores */
-
-
-/*************************************************************************
- *************************************************************************
-    Software fallbacks for missing functions.
-**************************************************************************
-**************************************************************************/
-
-#if !defined(FUNCTION_fixnormz_S)
-#ifdef FUNCTION_fixnormz_D
-inline INT fixnormz_S (SHORT a)
+inline static INT shiftRightSat(INT src, int scale)
 {
-  return fixnormz_D((INT)(a));
+  INT result;
+  asm(
+      "ssat %0,%2,%0;\n"
+
+      : "=&r"(result)
+      : "r"(src>>scale), "M"(SAMPLE_BITS)
+      );
+
+  return result;
 }
-#else
-inline INT fixnormz_S (SHORT a)
+
+  #define SATURATE_INT_PCM_RIGHT_SHIFT(src, scale) shiftRightSat(src, scale)
+
+inline static INT shiftLeftSat(INT src, int scale)
 {
-    int leadingBits = 0;
-    a = ~a;
-    while(a & 0x8000) {
-      leadingBits++;
-      a <<= 1;
-    }
+  INT result;
+  asm(
+      "ssat %0,%2,%0;\n"
 
-    return (leadingBits);
+      : "=&r"(result)
+      : "r"(src<<scale), "M"(SAMPLE_BITS)
+      );
+
+  return result;
 }
-#endif
-#endif
 
-#if !defined(FUNCTION_fixnormz_D)
-inline INT fixnormz_D (LONG a)
+  #define SATURATE_INT_PCM_LEFT_SHIFT(src, scale)  shiftLeftSat(src, scale)
+
+#endif /* compiler selection */
+
+#define FUNCTION_scaleValueInPlace
+inline
+void scaleValueInPlace(FIXP_DBL *value, /*!< Value */
+                       INT scalefactor   /*!< Scalefactor */
+                       )
 {
-    INT leadingBits = 0;
-    a = ~a;
-    while(a & 0x80000000) {
-      leadingBits++;
-      a <<= 1;
-    }
-
-    return (leadingBits);
+  INT newscale;
+  if ((newscale = scalefactor) >= 0)
+    *value <<= newscale;
+  else
+    *value >>= -newscale;
 }
-#endif
 
 
-/*****************************************************************************
+  #define SATURATE_RIGHT_SHIFT(src, scale, dBits)                                                        \
+      ( (((LONG)(src) ^ ((LONG)(src) >> (DFRACT_BITS-1)))>>(scale)) > (LONG)(((1U)<<((dBits)-1))-1))     \
+          ? ((LONG)(src) >> (DFRACT_BITS-1)) ^ (LONG)(((1U)<<((dBits)-1))-1)                             \
+          : ((LONG)(src) >> (scale))
 
-    functionname: fixnorm_D
-    description:  Count leading ones or zeros of operand val for dfract/LONG INT values.
-                  Return this value minus 1. Return 0 if operand==0.
-*****************************************************************************/
-#if !defined(FUNCTION_fixnorm_S)
-#ifdef FUNCTION_fixnorm_D
-inline INT fixnorm_S(FIXP_SGL val)
-{
-  return fixnorm_D((INT)(val));
-}
-#else
-inline INT fixnorm_S(FIXP_SGL val)
-{
-    INT leadingBits = 0;
-    if ( val != (FIXP_SGL)0 ) {
-        if ( val < (FIXP_SGL)0 ) {
-            val = ~val;
-        }
-        leadingBits = fixnormz_S(val) - 1;
-    }
-    return (leadingBits);
-}
-#endif
-#endif
+  #define SATURATE_LEFT_SHIFT(src, scale, dBits)                                                         \
+      ( ((LONG)(src) ^ ((LONG)(src) >> (DFRACT_BITS-1))) > ((LONG)(((1U)<<((dBits)-1))-1) >> (scale)) )  \
+          ? ((LONG)(src) >> (DFRACT_BITS-1)) ^ (LONG)(((1U)<<((dBits)-1))-1)                             \
+          : ((LONG)(src) << (scale))
 
-#if !defined(FUNCTION_fixnorm_D)
-inline INT fixnorm_D(FIXP_DBL val)
-{
-    INT leadingBits = 0;
-    if ( val != (FIXP_DBL)0 ) {
-        if ( val < (FIXP_DBL)0 ) {
-            val = ~val;
-        }
-        leadingBits = fixnormz_D(val) - 1;
-    }
-    return (leadingBits);
-}
-#endif
-
-#endif /* __CLZ_H__ */
