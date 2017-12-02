@@ -101,21 +101,8 @@ inline void cplxMultDiv2( FIXP_DBL *c_Re,
                           const FIXP_DBL b_Re,
                           const FIXP_DBL b_Im)
 {
-    LONG tmp1, tmp2;
-
-
-    asm(
-       "smulh %0, %2, %4;\n"     /* tmp1  = a_Re * b_Re */
-       "msub %0, %3, %5, %0;\n" /* tmp1 -= a_Im * b_Im */
-       "smulh %1, %2, %5;\n"     /* tmp2  = a_Re * b_Im */
-       "madd %1, %3, %4, %1;\n" /* tmp2 += a_Im * b_Re */
-       : "=&r"(tmp1), "=&r"(tmp2)
-       : "r"(a_Re), "r"(a_Im), "r"(b_Re), "r"(b_Im)
-       : "r0"
-       );
-
-    *c_Re = tmp1;
-    *c_Im = tmp2;
+    *c_Re = (((long long)a_Re * (long long)b_Re) - ((long long)a_Im * (long long)b_Im));
+    *c_Im = (((long long)a_Re * (long long)b_Im) + ((long long)a_Im * (long long)b_Re));
 }
 #endif /* FUNCTION_cplxMultDiv2_32x32X2 */
 
