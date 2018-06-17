@@ -19,6 +19,7 @@ cc_library_static {
         "-Wno-constant-logical-operand",
         "-Wno-self-assign",
     ],
+    polly: false,
     export_include_dirs: [
         "libAACdec/include",
         "libAACenc/include",
